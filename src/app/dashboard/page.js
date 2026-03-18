@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
 
 export default function Dashboard() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [currentUser, setCurrentUser] = useState(null);
   const [groups, setGroups] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -15,26 +17,24 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userStr = localStorage.getItem("@splitbill:currentUser");
-    if (!userStr) {
+    if (status === "unauthenticated") {
       router.push("/");
-      return;
+    } else if (status === "authenticated" && session?.user) {
+      setCurrentUser(session.user);
+      
+      // Fetch from backend API
+      fetch(`/api/groups?userId=${session.user.id}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.error) setGroups(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to load generic groups", err);
+          setLoading(false);
+        });
     }
-    const user = JSON.parse(userStr);
-    setCurrentUser(user);
-
-    // Fetch from backend API
-    fetch(`/api/groups?userId=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!data.error) setGroups(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load generic groups", err);
-        setLoading(false);
-      });
-  }, [router]);
+  }, [status, session, router]);
 
   const handleAddMemberInput = () => {
     setNewGroupMembers([...newGroupMembers, ""]);
@@ -83,8 +83,7 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("@splitbill:currentUser");
-    router.push("/");
+    signOut({ callbackUrl: "/" });
   };
 
   if (!currentUser) return null;

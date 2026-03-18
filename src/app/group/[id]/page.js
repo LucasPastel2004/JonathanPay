@@ -2,11 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, use } from "react";
+import { useSession } from "next-auth/react";
 
 export default function GroupPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
   const groupId = unwrappedParams.id;
+  const { data: session, status } = useSession();
   
   const [currentUser, setCurrentUser] = useState(null);
   const [group, setGroup] = useState(null);
@@ -19,39 +21,35 @@ export default function GroupPage({ params }) {
   const [loadingPix, setLoadingPix] = useState(false);
   const [loadingPage, setLoadingPage] = useState(true);
 
-  const fetchGroupData = async () => {
-    try {
-      const res = await fetch(`/api/groups/${groupId}`);
-      if (!res.ok) {
-        alert("Grupo não encontrado ou erro.");
-        router.push("/dashboard");
-        return;
-      }
-      const data = await res.json();
-      setGroup({ id: data.id, name: data.name });
-      setGroupMembersList(data.membersList || []);
-      setCart(data.cart || []);
-      setMemberPixKeys(data.memberPixKeys || {});
-      setLoadingPage(false);
-    } catch(e) {
-      alert("Falha de conexão.");
-      router.push("/dashboard");
-    }
-  };
-
   useEffect(() => {
-    // Determine Identity
-    const userStr = localStorage.getItem("@splitbill:currentUser");
-    if (!userStr) {
-      router.push("/");
-      return;
-    }
-    const user = JSON.parse(userStr);
-    setCurrentUser(user);
-    setNewItem(prev => ({ ...prev, paidBy: user.name }));
+    const fetchGroupData = async () => {
+      try {
+        const res = await fetch(`/api/groups/${groupId}`);
+        if (!res.ok) {
+          alert("Grupo não encontrado ou erro.");
+          router.push("/dashboard");
+          return;
+        }
+        const data = await res.json();
+        setGroup({ id: data.id, name: data.name });
+        setGroupMembersList(data.membersList || []);
+        setCart(data.cart || []);
+        setMemberPixKeys(data.memberPixKeys || {});
+        setLoadingPage(false);
+      } catch(e) {
+        alert("Falha de conexão.");
+        router.push("/dashboard");
+      }
+    };
 
-    fetchGroupData();
-  }, [groupId, router]);
+    if (status === "unauthenticated") {
+      router.push("/");
+    } else if (status === "authenticated" && session?.user) {
+      setCurrentUser(session.user);
+      setNewItem(prev => ({ ...prev, paidBy: session.user.name }));
+      fetchGroupData();
+    }
+  }, [groupId, router, status, session]);
 
   const handleAddItem = async (e) => {
     e.preventDefault();
@@ -71,8 +69,12 @@ export default function GroupPage({ params }) {
       });
       if (!res.ok) throw new Error("Erro ao salvar");
       setNewItem({ name: '', price: '', paidBy: currentUser?.name || '' });
-      // Refresh Data
-      fetchGroupData();
+      // Refresh Data via inline fetch basically
+      const d = await fetch(`/api/groups/${groupId}`);
+      const data = await d.json();
+      setGroupMembersList(data.membersList || []);
+      setCart(data.cart || []);
+      setMemberPixKeys(data.memberPixKeys || {});
     } catch(err) {
       alert(err.message);
     }

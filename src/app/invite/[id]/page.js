@@ -2,46 +2,46 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, use } from "react";
+import { useSession } from "next-auth/react";
 
 export default function InvitePage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
   const groupId = unwrappedParams.id;
+  const { data: session, status: sessionStatus } = useSession();
   const [status, setStatus] = useState("Verificando identificação...");
 
   useEffect(() => {
     const processInvite = async () => {
-      // Check Auth
-      const userStr = localStorage.getItem("@splitbill:currentUser");
-      if (!userStr) {
-        // Redireciona pro Login com o Redirect path
+      if (sessionStatus === "unauthenticated") {
         router.push(`/?redirect=/invite/${groupId}`);
         return;
       }
       
-      const user = JSON.parse(userStr);
-      setStatus(`Olá ${user.name}! Processando convite...`);
+      if (sessionStatus === "authenticated" && session?.user) {
+        setStatus(`Olá ${session.user.name}! Processando convite...`);
 
-      try {
-        const res = await fetch(`/api/groups/${groupId}/join`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id })
-        });
-        
-        if (res.ok) {
-          setStatus("Tudo certo! Redirecionando para o carrinho...");
-          setTimeout(() => router.push(`/group/${groupId}`), 1000);
-        } else {
-          setStatus("Oops! Grupo não existe ou link incorreto.");
+        try {
+          const res = await fetch(`/api/groups/${groupId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: session.user.id })
+          });
+          
+          if (res.ok) {
+            setStatus("Tudo certo! Redirecionando para o carrinho...");
+            setTimeout(() => router.push(`/group/${groupId}`), 1000);
+          } else {
+            setStatus("Oops! Grupo não existe ou link incorreto.");
+          }
+        } catch(err) {
+          setStatus("Erro de conexão no convite.");
         }
-      } catch(err) {
-        setStatus("Erro de conexão no convite.");
       }
     };
 
     processInvite();
-  }, [groupId, router]);
+  }, [groupId, router, sessionStatus, session]);
 
   return (
     <div className="login-container" style={{animation: 'fadeIn 0.5s ease-out'}}>
