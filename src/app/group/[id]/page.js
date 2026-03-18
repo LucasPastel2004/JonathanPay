@@ -214,7 +214,7 @@ export default function GroupPage({ params }) {
           <div className="glass-panel" style={{background: '#1f2937', textAlign: 'center', width: '90%', maxWidth: '400px'}}>
             <h2 style={{marginBottom: '16px', color: 'white'}}>Pagamento para {paymentModal.to}</h2>
             <div style={{background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '16px'}}>
-              <img src={paymentModal.qrData.qrcode} alt="QR Code Pix" style={{width: '200px', height: '200px'}} />
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentModal.qrData.brcode)}`} alt="QR Code Pix" style={{width: '200px', height: '200px'}} />
             </div>
             <p style={{color: 'white', fontWeight: 'bold', fontSize: '24px', marginBottom: '8px'}}>R$ {paymentModal.amount.toFixed(2)}</p>
             <p style={{color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '16px'}}>Código "Pix Copia e Cola":</p>
