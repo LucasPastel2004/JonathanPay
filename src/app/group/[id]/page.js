@@ -144,8 +144,9 @@ export default function GroupPage({ params }) {
     setLoadingPix(true);
     setPaymentModal({ ...trx, qrData: null });
     try {
-      const url = `https://gerarqrcodepix.com.br/api/v1?nome=${encodeURIComponent(trx.to)}&cidade=SaoPaulo&valor=${trx.amount.toFixed(2)}&chave=${encodeURIComponent(receiverKey)}`;
+      const url = `/api/pix?nome=${encodeURIComponent(trx.to)}&cidade=SaoPaulo&valor=${trx.amount.toFixed(2)}&chave=${encodeURIComponent(receiverKey)}`;
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Falha no servidor proxy ao contatar PIX");
       const data = await res.json();
       setPaymentModal({ ...trx, qrData: data });
     } catch (err) {
