@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jonathan Pay 💸 *(formerly SplitBill)*
 
-## Getting Started
+O aplicativo definitivo para rachar a conta com os amigos de forma inteligente, rápida e 100% sincronizada na nuvem! Desenvolvido com uma interface moderna (Glassmorphism) e tecnologias serverless.
 
-First, run the development server:
+![Jonathan Pay Preview](public/window.svg)
 
+## ✨ Funcionalidades
+
+- **Login com Google:** Autenticação segura e rápida utilizando o NextAuth.js.
+- **Grupos na Nuvem:** Crie grupos para viagens, rolês ou churrascos. Tudo é salvo em tempo real no banco de dados.
+- **Carrinho Inteligente:** Adicione itens informando quem pagou e quem consumiu. O Jonathan Pay faz o cálculo sozinho.
+- **Acerto de Contas Otimizado:** O algoritmo interno reduz o número de transferências necessárias. Se o João deve para a Maria, e a Maria deve para o Pedro, o app manda o João pagar direto para o Pedro!
+- **QR Code Automático de PIX:** O aplicativo gera instantaneamente Códigos PIX (Copia e Cola e QR Code) usando a chave de quem deve receber.
+- **Links de Convite:** Envie o link do grupo pelo WhatsApp e seus amigos entrarão automaticamente!
+
+---
+
+## 🚀 Tecnologias Integradas
+
+- [Next.js (App Router)](https://nextjs.org/) - Framework de React (Frontend e APIs Backend)
+- [Vercel Postgres (@vercel/postgres)](https://vercel.com/docs/storage/vercel-postgres) - Banco de Dados Cloud SQL (Serverless)
+- [NextAuth.js (Auth.js)](https://next-auth.js.org/) - Gerenciamento de Identidade OAuth (Logins via Google)
+- **Vanilla CSS:** Designs otimizados manualmente usando variáveis de ambiente do CSS para temas e keyframes para Micro-animações.
+- [API Gerar PIX](https://gerarqrcodepix.com.br/) - Serviço de conversão de Chave Pix em payload BRCode e QR Code Image.
+
+---
+
+## 🛠️ Como rodar o projeto localmente
+
+Siga os passos abaixo para testar e contribuir com o **Jonathan Pay** na sua própria máquina.
+
+### 1. Clonar o repositório
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/SeuUsuario/JonathanPay.git
+cd JonathanPay
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Instalar dependências
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 3. Configurar Variáveis de Ambiente (`.env.local`)
+Crie um arquivo `.env.local` na raiz do projeto contendo as credenciais do seu banco de dados na Vercel e as chaves de API do Google Cloud Console (OAuth Web App):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Conexões com o Banco de Dados (Vercel Postgres)
+POSTGRES_URL="postgres://default:suasenha@ep-bold-surf-1234.us-east-1.postgres.vercel-storage.com:5432/verceldb"
+POSTGRES_PRISMA_URL="postgres://default:suasenha@ep-bold-surf-1234.us-east-1.postgres.vercel-storage.com:5432/verceldb?pgbouncer=true&connect_timeout=15"
+POSTGRES_URL_NON_POOLING="postgres://default:suasenha@ep-bold-surf-1234.us-east-1.postgres.vercel-storage.com:5432/verceldb"
+POSTGRES_USER="default"
+POSTGRES_HOST="ep-bold-surf-1234.us-east-1.postgres.vercel-storage.com"
+POSTGRES_PASSWORD="suasenha"
+POSTGRES_DATABASE="verceldb"
 
-## Learn More
+# Autenticação Google (GCP Console Credentials)
+GOOGLE_CLIENT_ID="seu-id-do-google-aqui.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="sua-chave-secreta-do-google-aqui"
 
-To learn more about Next.js, take a look at the following resources:
+# Configurações do NextAuth
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="uma-frase-secreta-qualquer-para-encriptar-sessoes"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Inicializar Tabelas (Primeira vez)
+Se você estiver subindo um novo banco de dados vazio, acesse localmente a rota oculta abaixo no seu navegador para forçar a criação das tabelas `users`, `groups`, `group_members`, e `items`:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+[http://localhost:3000/api/init](http://localhost:3000/api/init)
 
-## Deploy on Vercel
+### 5. Iniciar o servidor de desenvolvimento
+```bash
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Abra o seu navegador em [http://localhost:3000](http://localhost:3000) e divirta-se!
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🤝 Contribuições
+Sinta-se à vontade para abrir Issues e Pull Requests. Toda ajuda é muito bem vinda, seja melhorando o CSS, organizando componentes ou adicionando métodos de pagamento novos!
+
+## 📜 Licença
+Este projeto é Open Source sob a licença **MIT**, sinta-se livre para usar o código e adaptá-lo!
