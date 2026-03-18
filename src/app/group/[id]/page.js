@@ -20,6 +20,7 @@ export default function GroupPage({ params }) {
   const [paymentModal, setPaymentModal] = useState(null);
   const [loadingPix, setLoadingPix] = useState(false);
   const [loadingPage, setLoadingPage] = useState(true);
+  const [addingItem, setAddingItem] = useState(false);
 
   useEffect(() => {
     const fetchGroupData = async () => {
@@ -27,7 +28,7 @@ export default function GroupPage({ params }) {
         const res = await fetch(`/api/groups/${groupId}`);
         if (!res.ok) {
           const errData = await res.json().catch(()=>({}));
-          alert("Erro no Servidor ao carregar grupo: " + (errData.error || "Grupo não encontrado ou id inválido."));
+          alert("Erro: " + (errData.error || "Grupo não encontrado."));
           router.push("/dashboard");
           return;
         }
@@ -56,7 +57,7 @@ export default function GroupPage({ params }) {
     e.preventDefault();
     if (!newItem.name || !newItem.price) return;
     
-    // Add to backend
+    setAddingItem(true);
     try {
       const res = await fetch(`/api/groups/${groupId}/items`, {
         method: 'POST',
@@ -70,7 +71,6 @@ export default function GroupPage({ params }) {
       });
       if (!res.ok) throw new Error("Erro ao salvar");
       setNewItem({ name: '', price: '', paidBy: currentUser?.name || '' });
-      // Refresh Data via inline fetch basically
       const d = await fetch(`/api/groups/${groupId}`);
       const data = await d.json();
       setGroupMembersList(data.membersList || []);
@@ -78,6 +78,8 @@ export default function GroupPage({ params }) {
       setMemberPixKeys(data.memberPixKeys || {});
     } catch(err) {
       alert(err.message);
+    } finally {
+      setAddingItem(false);
     }
   };
 
@@ -89,7 +91,6 @@ export default function GroupPage({ params }) {
         body: JSON.stringify({ userName: memberName })
       });
       
-      // Optimização Otimista
       setCart(cart.map(item => {
         if (item.id !== itemId) return item;
         const isIncluded = item.splitAmong.includes(memberName);
@@ -131,13 +132,13 @@ export default function GroupPage({ params }) {
   const copyInviteLink = () => {
     const link = `${window.location.origin}/invite/${groupId}`;
     navigator.clipboard.writeText(link);
-    alert("Link de convite copiado!\n\nEnvie para seus amigos acessarem e entrarem direto no grupo: " + link);
+    alert("Link copiado! Envie para seus amigos:\n\n" + link);
   };
 
   const generatePix = async (trx) => {
     const receiverKey = memberPixKeys[trx.to];
     if (!receiverKey) {
-      alert(`O membro ${trx.to} não tem chave Pix cadastrada!`);
+      alert(`${trx.to} não tem chave Pix cadastrada!`);
       return;
     }
 
@@ -146,7 +147,7 @@ export default function GroupPage({ params }) {
     try {
       const url = `/api/pix?nome=${encodeURIComponent(trx.to)}&cidade=SaoPaulo&valor=${trx.amount.toFixed(2)}&chave=${encodeURIComponent(receiverKey)}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Falha no servidor proxy ao contatar PIX");
+      if (!res.ok) throw new Error("Falha ao gerar PIX");
       const data = await res.json();
       setPaymentModal({ ...trx, qrData: data });
     } catch (err) {
@@ -199,89 +200,96 @@ export default function GroupPage({ params }) {
     return transactions;
   }, [cart, groupMembersList]);
 
-  if (loadingPage || !currentUser) return <div style={{padding: '40px', color: 'white'}}>Carregando do banco de dados...</div>;
+  if (loadingPage || !currentUser) {
+    return (
+      <div style={{width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '16px'}}>
+        <div className="spinner" />
+        <p style={{color: 'var(--text-secondary)', fontSize: '14px'}}>Carregando grupo...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="app-container" style={{animation: 'fadeIn 0.5s ease-out'}}>
+    <div className="app-container animate-fade">
       
-      {/* Pix Modal */}
+      {/* Pix Payment Modal */}
       {paymentModal && paymentModal.qrData && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-          background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', 
-          alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div className="glass-panel" style={{background: '#1f2937', textAlign: 'center', width: '90%', maxWidth: '400px'}}>
-            <h2 style={{marginBottom: '16px', color: 'white'}}>Pagamento para {paymentModal.to}</h2>
-            <div style={{background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '16px'}}>
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentModal.qrData.brcode)}`} alt="QR Code Pix" style={{width: '200px', height: '200px'}} />
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setPaymentModal(null)}>
+          <div className="glass-panel animate-slide" style={{background: 'rgba(15, 17, 28, 0.95)', textAlign: 'center', width: '90%', maxWidth: '400px'}}>
+            <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '4px'}}>Pagamento via Pix para</p>
+            <h2 style={{marginBottom: '20px', color: 'var(--success)', fontSize: '20px'}}>{paymentModal.to}</h2>
+            <div style={{background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '20px'}}>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentModal.qrData.brcode)}`} alt="QR Code Pix" style={{width: '200px', height: '200px', display: 'block'}} />
             </div>
-            <p style={{color: 'white', fontWeight: 'bold', fontSize: '24px', marginBottom: '8px'}}>R$ {paymentModal.amount.toFixed(2)}</p>
-            <p style={{color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '16px'}}>Código "Pix Copia e Cola":</p>
+            <p style={{color: 'white', fontWeight: 'bold', fontSize: '28px', marginBottom: '4px'}}>R$ {paymentModal.amount.toFixed(2)}</p>
+            <p style={{color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '12px'}}>Toque no campo abaixo para copiar:</p>
             <textarea 
               readOnly 
               value={paymentModal.qrData.brcode} 
-              style={{width: '100%', height: '80px', fontSize: '12px', marginBottom: '16px'}} 
-              onClick={(e) => { e.target.select(); navigator.clipboard.writeText(paymentModal.qrData.brcode); alert("Copiado!") }}
+              style={{width: '100%', height: '70px', fontSize: '11px', marginBottom: '16px', resize: 'none', borderRadius: '8px', cursor: 'pointer'}} 
+              onClick={(e) => { e.target.select(); navigator.clipboard.writeText(paymentModal.qrData.brcode); alert("Código PIX copiado! ✅") }}
             />
             <button className="btn btn-secondary" style={{width: '100%'}} onClick={() => setPaymentModal(null)}>Fechar</button>
           </div>
         </div>
       )}
 
+      {/* Loading Pix Overlay */}
       {loadingPix && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-          background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', 
-          alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{color: 'white', fontSize: '20px'}}>Gerando QR Code Pix...</div>
+        <div className="modal-overlay">
+          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px'}}>
+            <div className="spinner" style={{width: '48px', height: '48px', borderWidth: '4px'}} />
+            <p style={{color: 'white', fontSize: '16px'}}>Gerando QR Code Pix...</p>
+          </div>
         </div>
       )}
 
+      {/* Header */}
       <header className="header" style={{ marginBottom: '24px', alignItems: 'flex-start' }}>
         <div>
-          <button className="btn btn-secondary" style={{padding: '8px 16px', marginBottom: '16px', fontSize: '14px'}} onClick={() => router.push('/dashboard')}>
+          <button className="btn btn-secondary" style={{padding: '6px 14px', marginBottom: '12px', fontSize: '13px'}} onClick={() => router.push('/dashboard')}>
             ← Voltar
           </button>
-          <h1 style={{fontSize: '28px', fontWeight: 600}}>{group.name}</h1>
-          <p style={{color: 'var(--text-secondary)'}}>Total das Compras: <span style={{color: 'var(--success)', fontWeight:'bold'}}>R$ {total.toFixed(2)}</span></p>
+          <h1 style={{fontSize: '26px', fontWeight: 600, marginBottom: '4px'}}>{group.name}</h1>
+          <p style={{color: 'var(--text-secondary)', fontSize: '14px'}}>
+            Total: <span style={{color: 'var(--success)', fontWeight: 700, fontSize: '16px'}}>R$ {total.toFixed(2)}</span>
+          </p>
         </div>
         <div>
-          <button className="btn btn-primary" style={{padding: '8px 16px', fontSize: '14px', background: 'var(--success)'}} onClick={copyInviteLink}>
-            🔗 Convidar Pessoas
+          <button className="btn btn-primary" style={{padding: '10px 16px', fontSize: '13px', background: 'linear-gradient(135deg, var(--success), #059669)'}} onClick={copyInviteLink}>
+            🔗 Convidar
           </button>
         </div>
       </header>
 
-      <div style={{display: 'grid', gridTemplateColumns: 'reap', gap: '24px'}}>
+      <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
         
-        {/* Members & Pix Keys Config */}
+        {/* Members & Pix Keys */}
         <div className="glass-panel" style={{borderColor: 'var(--primary-hover)'}}>
-          <h3 style={{marginBottom: '16px', fontSize: '18px'}}>Participantes e Chaves Pix</h3>
+          <h3 style={{marginBottom: '14px', fontSize: '16px', fontWeight: 600}}>👥 Participantes</h3>
           <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
             {groupMembersList.map(m => {
               const isMe = m === currentUser.name;
               const hasKey = !!memberPixKeys[m];
               
               return (
-                <div key={m} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: isMe ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0,0,0,0.2)', borderRadius: '8px'}}>
-                  <div style={{fontWeight: isMe ? 600 : 400, color: isMe ? 'var(--primary-color)' : 'white'}}>
-                    {m} {isMe && "(Você)"}
+                <div key={m} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: isMe ? 'rgba(139, 92, 246, 0.08)' : 'rgba(0,0,0,0.2)', borderRadius: '10px', border: isMe ? '1px solid rgba(139,92,246,0.2)' : '1px solid transparent'}}>
+                  <div style={{fontWeight: isMe ? 600 : 400, color: isMe ? 'var(--primary-color)' : 'white', fontSize: '14px'}}>
+                    {m} {isMe && <span className="badge badge-success" style={{marginLeft: '6px'}}>Você</span>}
                   </div>
                   <div>
                     {isMe ? (
                       <input 
                         type="text" 
-                        placeholder="Na nuvem, chave pix salva real" 
+                        placeholder="Sua chave Pix" 
                         value={memberPixKeys[m] || ''} 
                         onChange={e => setMemberPixKeys({ ...memberPixKeys, [m]: e.target.value })}
                         onBlur={e => handleUpdatePixKey(e.target.value)}
-                        style={{padding: '6px 12px', fontSize: '14px', width: '250px'}}
+                        style={{padding: '6px 12px', fontSize: '13px', width: '200px'}}
                       />
                     ) : (
-                      <span style={{fontSize: '12px', color: hasKey ? 'var(--success)' : 'var(--text-secondary)'}}>
-                        {hasKey ? "Chave Cadastrada" : "Aguardando chave"}
+                      <span className={`badge ${hasKey ? 'badge-success' : 'badge-warning'}`}>
+                        {hasKey ? "✓ Chave salva" : "⏳ Aguardando"}
                       </span>
                     )}
                   </div>
@@ -293,57 +301,58 @@ export default function GroupPage({ params }) {
 
         {/* Add Item Form */}
         <div className="glass-panel">
-          <h3 style={{marginBottom: '16px', fontSize: '18px'}}>Colocar no Carrinho</h3>
-          <form onSubmit={handleAddItem} style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+          <h3 style={{marginBottom: '14px', fontSize: '16px', fontWeight: 600}}>🛒 Adicionar Item</h3>
+          <form onSubmit={handleAddItem} style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
             <input 
               type="text" 
               placeholder="Produto (ex: Refrigerante)"
               value={newItem.name}
               onChange={e => setNewItem({...newItem, name: e.target.value})}
-              style={{flex: '1 1 200px'}}
+              style={{flex: '1 1 180px'}}
             />
             <input 
               type="number" 
               placeholder="R$ 0,00"
               value={newItem.price}
               onChange={e => setNewItem({...newItem, price: e.target.value})}
-              style={{flex: '1 1 100px'}}
+              style={{flex: '1 1 90px'}}
               step="0.01"
             />
             <select 
               value={newItem.paidBy} 
               onChange={e => setNewItem({...newItem, paidBy: e.target.value})}
-              style={{flex: '1 1 150px'}}
+              style={{flex: '1 1 130px'}}
             >
               <option value={currentUser.name}>Eu paguei</option>
               {groupMembersList.filter(m => m !== currentUser.name).map(m => (
                 <option key={m} value={m}>{m} pagou</option>
               ))}
             </select>
-            <button type="submit" className="btn btn-primary" style={{flex: '1 1 120px'}}>Adicionar Item Real</button>
+            <button type="submit" className="btn btn-primary" style={{flex: '1 1 110px', fontSize: '14px'}} disabled={addingItem}>
+              {addingItem ? 'Salvando...' : '+ Adicionar'}
+            </button>
           </form>
         </div>
 
-        {/* List Cart Items */}
+        {/* Cart Items */}
         <div className="glass-panel">
-          <h3 style={{marginBottom: '16px', fontSize: '18px'}}>Itens no Carrinho</h3>
-          <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+          <h3 style={{marginBottom: '14px', fontSize: '16px', fontWeight: 600}}>📦 Itens no Carrinho ({cart.length})</h3>
+          <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
             {cart.map(item => (
-              <div key={item.id} style={{padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', borderLeft: '4px solid var(--primary-color)'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+              <div key={item.id} className="item-card">
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                   <div>
-                    <div style={{fontWeight: 600, fontSize: '16px'}}>{item.name}</div>
-                    <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>Pago por {item.paidBy}</div>
+                    <div style={{fontWeight: 600, fontSize: '15px'}}>{item.name}</div>
+                    <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px'}}>Pago por <strong style={{color: 'var(--primary-color)'}}>{item.paidBy}</strong></div>
                   </div>
-                  <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                    <div style={{fontWeight: 600, color: 'white'}}>R$ {item.price.toFixed(2)}</div>
-                    <button onClick={() => removeItem(item.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '20px'}}>×</button>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                    <div style={{fontWeight: 600, color: 'white', fontSize: '15px'}}>R$ {item.price.toFixed(2)}</div>
+                    <button onClick={() => removeItem(item.id)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '18px', padding: '2px 6px', borderRadius: '6px', transition: 'background 0.2s'}} onMouseOver={e => e.target.style.background = 'var(--danger-glow)'} onMouseOut={e => e.target.style.background = 'transparent'}>✕</button>
                   </div>
                 </div>
                 
-                {/* Member Toggle */}
-                <div style={{fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px'}}>Quem consumiu este item?</div>
-                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px'}}>Quem consumiu:</div>
+                <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
                   {groupMembersList.map(member => {
                     const isSelected = item.splitAmong.includes(member);
                     return (
@@ -351,16 +360,7 @@ export default function GroupPage({ params }) {
                         type="button"
                         key={member}
                         onClick={() => toggleMemberInItem(item.id, member)}
-                        style={{
-                          padding: '6px 12px', 
-                          borderRadius: '20px', 
-                          border: `1px solid ${isSelected ? 'var(--primary-color)' : 'var(--surface-border)'}`,
-                          background: isSelected ? 'rgba(139, 92, 246, 0.2)' : 'rgba(0,0,0,0.3)',
-                          color: isSelected ? 'white' : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          fontSize: '12px'
-                        }}
+                        className={`pill-btn ${isSelected ? 'active' : ''}`}
                       >
                         {isSelected ? '✓ ' : ''}{member}
                       </button>
@@ -369,32 +369,44 @@ export default function GroupPage({ params }) {
                 </div>
               </div>
             ))}
-            {cart.length === 0 && <div style={{color:'var(--text-secondary)'}}>O carrinho está vazio. Adicione os primeiros itens na nuvem!</div>}
+            {cart.length === 0 && (
+              <div style={{textAlign: 'center', padding: '24px', color: 'var(--text-secondary)', fontSize: '14px'}}>
+                <div style={{fontSize: '32px', marginBottom: '8px'}}>🛒</div>
+                Carrinho vazio. Adicione o primeiro item!
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Split Summary Calc */}
-        <div className="glass-panel" style={{borderColor: 'var(--success)', background: 'rgba(16, 185, 129, 0.05)'}}>
-          <h3 style={{marginBottom: '16px', fontSize: '18px'}}>Como Acertar as Contas</h3>
-          <p style={{color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '14px'}}>Cálculo automático reduzindo transações desnecessárias:</p>
-          <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+        {/* Debt Settlement */}
+        <div className="glass-panel" style={{borderColor: 'var(--success)', background: 'rgba(16, 185, 129, 0.03)'}}>
+          <h3 style={{marginBottom: '6px', fontSize: '16px', fontWeight: 600}}>⚡ Acerto de Contas</h3>
+          <p style={{color: 'var(--text-secondary)', marginBottom: '14px', fontSize: '13px'}}>Transações otimizadas para o menor número de transferências:</p>
+          <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
              {calculateDebts.map((trx, i) => (
-                <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', alignItems: 'center'}}>
-                  <div style={{display: 'flex', flexDirection: 'column'}}>
-                    <span><strong style={{color: 'var(--danger)'}}>{trx.from}</strong> deve para <strong style={{color: 'var(--success)'}}>{trx.to}</strong></span>
-                    <span style={{fontWeight: 600}}>R$ {trx.amount.toFixed(2)}</span>
+                <div key={i} className="debt-row">
+                  <div>
+                    <div style={{fontSize: '14px', marginBottom: '2px'}}>
+                      <strong style={{color: 'var(--danger)'}}>{trx.from}</strong>
+                      <span style={{color: 'var(--text-secondary)', margin: '0 6px'}}>→</span>
+                      <strong style={{color: 'var(--success)'}}>{trx.to}</strong>
+                    </div>
+                    <span style={{fontWeight: 700, fontSize: '16px'}}>R$ {trx.amount.toFixed(2)}</span>
                   </div>
                   <button 
                     onClick={() => generatePix(trx)}
                     className="btn btn-primary" 
-                    style={{padding: '8px 16px', fontSize: '12px', borderRadius: '8px'}}
+                    style={{padding: '8px 16px', fontSize: '13px'}}
                   >
-                    Gerar Pix
+                    💸 Gerar Pix
                   </button>
                 </div>
              ))}
              {calculateDebts.length === 0 && (
-               <div style={{color: 'var(--text-secondary)', padding: '12px'}}>Tudo certo! Ninguém deve nada no momento.</div>
+               <div style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontSize: '14px'}}>
+                 <div style={{fontSize: '32px', marginBottom: '8px'}}>✅</div>
+                 Tudo certo! Ninguém deve nada.
+               </div>
              )}
           </div>
         </div>

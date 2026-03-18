@@ -9,7 +9,6 @@ export default function Home() {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    // If the user's real session is available, redirect them securely
     if (status === "authenticated") {
       const urlParams = new URLSearchParams(window.location.search);
       const rawRedirect = urlParams.get("redirect");
@@ -19,12 +18,16 @@ export default function Home() {
   }, [status, router]);
 
   const handleGoogleLogin = () => {
-    // Calling next-auth provider internally
     signIn("google");
   };
 
   if (status === "loading") {
-    return <div style={{width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white'}}>Carregando acesso seguro...</div>;
+    return (
+      <div style={{width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '16px'}}>
+        <div className="spinner" />
+        <p style={{color: 'var(--text-secondary)', fontSize: '14px'}}>Carregando acesso seguro...</p>
+      </div>
+    );
   }
 
   return (
@@ -34,25 +37,35 @@ export default function Home() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--background)'
+      padding: '20px'
     }}>
-      <div className="glass-panel" style={{ textAlign: "center", padding: "40px", width: "90%", maxWidth: "400px" }}>
-        <h1 style={{ marginBottom: "16px", fontSize: "32px", fontWeight: "700" }}>Jonathan Pay 💸</h1>
-        <p style={{ color: "var(--text-secondary)", marginBottom: "32px" }}>
-          Suas contas divididas com a nuvem. Entre para começar de verdade:
+      <div className="glass-panel" style={{ textAlign: "center", padding: "48px 40px", width: "100%", maxWidth: "420px" }}>
+        
+        <div style={{ fontSize: '48px', marginBottom: '8px' }}>💸</div>
+        <h1 style={{ marginBottom: "8px", fontSize: "28px", fontWeight: "700", background: 'linear-gradient(135deg, #f8fafc, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          Jonathan Pay
+        </h1>
+        <p style={{ color: "var(--text-secondary)", marginBottom: "36px", fontSize: "14px", lineHeight: '1.5' }}>
+          Divida contas, rastreie gastos e gere Pix automaticamente — tudo sincronizado na nuvem.
         </p>
           
         <button 
           onClick={handleGoogleLogin} 
-          className="btn btn-primary" 
-          style={{ width: "100%", padding: "14px", fontSize: "16px", marginTop: "8px", display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}
+          className="btn btn-google" 
+          style={{ width: "100%", padding: "14px 24px", fontSize: "15px" }}
         >
-          <img src="https://authjs.dev/img/providers/google.svg" width="24" height="24" alt="Google Logo" />
-          Entrar com o Google
+          <img src="https://authjs.dev/img/providers/google.svg" width="20" height="20" alt="Google" />
+          Continuar com o Google
         </button>
 
-        <p style={{ color: "var(--text-secondary)", marginTop: "24px", fontSize: "12px" }}>
-          Ao iniciar você concorda que o Jonathan Pay usa AuthJS do Google Cloud para proteção dos seus dados online.
+        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center', gap: '24px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <span>🔒 Seguro</span>
+          <span>☁️ Na nuvem</span>
+          <span>⚡ Instantâneo</span>
+        </div>
+
+        <p style={{ color: "rgba(148,163,184,0.5)", marginTop: "24px", fontSize: "11px" }}>
+          Protegido por Google OAuth e NextAuth.js
         </p>
       </div>
     </div>

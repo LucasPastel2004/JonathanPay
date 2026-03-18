@@ -11,10 +11,10 @@ export default function Dashboard() {
   const [groups, setGroups] = useState([]);
   const [showModal, setShowModal] = useState(false);
   
-  // New Group State
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupMembers, setNewGroupMembers] = useState([""]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -22,7 +22,6 @@ export default function Dashboard() {
     } else if (status === "authenticated" && session?.user) {
       setCurrentUser(session.user);
       
-      // Fetch from backend API
       fetch(`/api/groups?userId=${session.user.id}`)
         .then(r => r.json())
         .then(data => {
@@ -30,7 +29,7 @@ export default function Dashboard() {
           setLoading(false);
         })
         .catch(err => {
-          console.error("Failed to load generic groups", err);
+          console.error("Failed to load groups", err);
           setLoading(false);
         });
     }
@@ -54,15 +53,14 @@ export default function Dashboard() {
     e.preventDefault();
     if (!newGroupName.trim()) return alert("O grupo precisa de um nome.");
     
-    // Inclui e limpa strings
     const validMembers = [
       ...new Set(newGroupMembers.map(m => m.trim()).filter(m => m !== ""))
     ];
 
+    setCreating(true);
     try {
-      // Hard check if the Database has generated the User ID
       if (!currentUser.id) {
-         throw new Error("Seu perfil não está no Banco de Dados. Acesse a url /api/init para forçar a criação das tabelas e faça login novamente.");
+         throw new Error("Seu perfil não está no Banco de Dados. Acesse /api/init e faça login novamente.");
       }
 
       const res = await fetch('/api/groups', {
@@ -77,17 +75,17 @@ export default function Dashboard() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Erro misterioso no servidor");
+        throw new Error(errorData.error || "Erro no servidor");
       }
       
       const newGroup = await res.json();
-      
-      // Reset Modal & redirect
       setShowModal(false);
       router.push(`/group/${newGroup.id}`);
 
     } catch (err) {
-      alert("Falha de comunicação: " + err.message);
+      alert("Falha: " + err.message);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -95,20 +93,27 @@ export default function Dashboard() {
     signOut({ callbackUrl: "/" });
   };
 
-  if (!currentUser) return null;
+  if (!currentUser) {
+    return (
+      <div style={{width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '16px'}}>
+        <div className="spinner" />
+        <p style={{color: 'var(--text-secondary)', fontSize: '14px'}}>Carregando painel...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="app-container" style={{animation: 'fadeIn 0.5s ease-out'}}>
+    <div className="app-container animate-fade">
       <header className="header" style={{alignItems: 'flex-start'}}>
         <div>
-          <h1 style={{fontSize: '28px', fontWeight: 700}}>Meus Grupos</h1>
-          <p style={{color: 'var(--text-secondary)'}}>Bem-vindo, {currentUser.name}!</p>
+          <h1 style={{fontSize: '26px', fontWeight: 700, marginBottom: '4px'}}>Meus Grupos</h1>
+          <p style={{color: 'var(--text-secondary)', fontSize: '14px'}}>Olá, <strong style={{color: 'var(--primary-color)'}}>{currentUser.name}</strong> 👋</p>
         </div>
         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             + Novo Grupo
           </button>
-          <button className="btn btn-danger" onClick={handleLogout} style={{background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)'}}>
+          <button className="btn btn-danger" onClick={handleLogout}>
             Sair
           </button>
         </div>
@@ -116,50 +121,48 @@ export default function Dashboard() {
 
       {/* New Group Modal */}
       {showModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-          background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', 
-          alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div className="glass-panel" style={{background: '#1f2937', width: '90%', maxWidth: '500px'}}>
-            <h2 style={{marginBottom: '16px', color: 'white'}}>Criar Novo Grupo</h2>
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+          <div className="glass-panel animate-slide" style={{background: 'rgba(15, 17, 28, 0.95)', width: '90%', maxWidth: '480px'}}>
+            <h2 style={{marginBottom: '4px', color: 'white', fontSize: '20px'}}>Criar Novo Grupo</h2>
+            <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px'}}>Adicione um nome e convide participantes iniciais.</p>
             
             <form onSubmit={handleCreateGroup} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
               <div>
-                <label style={{display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)'}}>Nome do Grupo</label>
+                <label style={{display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500}}>Nome do Grupo</label>
                 <input 
                   type="text" 
                   value={newGroupName} 
                   onChange={e => setNewGroupName(e.target.value)} 
                   placeholder="Ex: Viagem para Ubatuba"
-                  style={{width: '100%'}}
                   autoFocus
                 />
               </div>
 
               <div>
-                <label style={{display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary)'}}>Participantes Iniciais (Opcional)</label>
-                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px'}}>Você já está no grupo. Seus amigos também poderão entrar depois por um Link de Convite.</p>
+                <label style={{display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500}}>Participantes (Opcional)</label>
+                <p style={{fontSize: '12px', color: 'rgba(148,163,184,0.6)', marginBottom: '10px'}}>Você já está incluído. Amigos podem entrar depois pelo link de convite.</p>
                 {newGroupMembers.map((m, i) => (
                   <div key={i} style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
                     <input 
                       type="text" 
                       value={m} 
                       onChange={e => updateMemberName(i, e.target.value)} 
-                      placeholder={`Amigo (ex: Maria)`}
+                      placeholder={`Nome do amigo`}
                       style={{flex: 1}}
                     />
-                    <button type="button" onClick={() => removeMemberInput(i)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: '20px', cursor: 'pointer'}}>×</button>
+                    <button type="button" onClick={() => removeMemberInput(i)} style={{background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: '20px', cursor: 'pointer', padding: '0 8px'}}>×</button>
                   </div>
                 ))}
-                <button type="button" onClick={handleAddMemberInput} className="btn btn-secondary" style={{fontSize: '12px', padding: '6px 12px', marginTop: '4px'}}>
-                  + Adicionar nome
+                <button type="button" onClick={handleAddMemberInput} className="btn btn-secondary" style={{fontSize: '12px', padding: '6px 14px'}}>
+                  + Adicionar
                 </button>
               </div>
 
-              <div style={{display: 'flex', gap: '12px', marginTop: '16px'}}>
+              <div style={{display: 'flex', gap: '10px', marginTop: '8px'}}>
                 <button type="button" className="btn btn-secondary" style={{flex: 1}} onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" style={{flex: 1}}>Criar Grupo no Servidor</button>
+                <button type="submit" className="btn btn-primary" style={{flex: 1}} disabled={creating}>
+                  {creating ? 'Criando...' : '✨ Criar Grupo'}
+                </button>
               </div>
             </form>
           </div>
@@ -167,21 +170,27 @@ export default function Dashboard() {
       )}
 
       {loading ? (
-        <div style={{textAlign: 'center', padding: '40px', color: 'white'}}>Buscando grupos online...</div>
+        <div style={{textAlign: 'center', padding: '60px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px'}}>
+          <div className="spinner" />
+          <p style={{color: 'var(--text-secondary)', fontSize: '14px'}}>Buscando grupos na nuvem...</p>
+        </div>
       ) : (
-        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px'}}>
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px'}}>
           {groups.map(g => (
-            <div key={g.id} className="glass-panel" style={{cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column'}} onClick={() => router.push(`/group/${g.id}`)}>
-              <h2 style={{fontSize: '20px', marginBottom: '8px'}}>{g.name}</h2>
-              <div style={{display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '14px', marginTop: 'auto'}}>
-                <span>👥 {g.members} membros</span>
-                <span style={{color: 'var(--success)', fontWeight: 600}}>Ver contas →</span>
+            <div key={g.id} className="glass-panel group-card" onClick={() => router.push(`/group/${g.id}`)}>
+              <h2 style={{fontSize: '18px', marginBottom: '12px', fontWeight: 600}}>{g.name}</h2>
+              <div style={{display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '13px', marginTop: 'auto', alignItems: 'center'}}>
+                <span>👥 {g.members} {g.members === 1 ? 'membro' : 'membros'}</span>
+                <span className="badge badge-success">Ver contas →</span>
               </div>
             </div>
           ))}
           {groups.length === 0 && (
-            <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-secondary)'}}>
-              Você ainda não tem grupos ou não foi convidado para nenhum. Crie um para começar a dividir!
+            <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px'}}>
+              <div style={{fontSize: '48px', marginBottom: '16px'}}>📋</div>
+              <h3 style={{color: 'var(--text-main)', marginBottom: '8px', fontWeight: 600}}>Nenhum grupo ainda</h3>
+              <p style={{color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px'}}>Crie seu primeiro grupo e comece a dividir contas com seus amigos!</p>
+              <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Criar meu primeiro grupo</button>
             </div>
           )}
         </div>
