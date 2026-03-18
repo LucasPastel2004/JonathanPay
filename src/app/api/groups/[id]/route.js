@@ -2,7 +2,8 @@ import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
-  const groupId = params.id;
+  const unwrappedParams = await params;
+  const groupId = unwrappedParams.id;
   
   if (!groupId) {
     return NextResponse.json({ error: "Id do grupo nao informado" }, { status: 400 });

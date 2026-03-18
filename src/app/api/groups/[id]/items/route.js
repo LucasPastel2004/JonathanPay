@@ -2,7 +2,8 @@ import { db } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
-  const groupId = params.id;
+  const unwrappedParams = await params;
+  const groupId = unwrappedParams.id;
   const client = await db.connect();
   
   try {

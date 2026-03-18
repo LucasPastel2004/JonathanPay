@@ -2,7 +2,8 @@ import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
 export async function DELETE(request, { params }) {
-  const itemId = params.itemId;
+  const unwrappedParams = await params;
+  const itemId = unwrappedParams.itemId;
   
   try {
     if (!itemId) return NextResponse.json({ error: "Item ID missing" }, { status: 400 });

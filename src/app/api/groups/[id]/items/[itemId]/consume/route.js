@@ -2,7 +2,8 @@ import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
 export async function PUT(request, { params }) {
-  const itemId = params.itemId;
+  const unwrappedParams = await params;
+  const itemId = unwrappedParams.itemId;
   
   try {
     const { userName } = await request.json();
