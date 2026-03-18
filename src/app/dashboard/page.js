@@ -97,9 +97,6 @@ export default function Dashboard() {
           <p style={{color: 'var(--text-secondary)'}}>Bem-vindo, {currentUser.name}!</p>
         </div>
         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
-          <button className="btn btn-secondary" onClick={() => router.push('/search')}>
-            🔍 Preços Médios
-          </button>
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             + Novo Grupo
           </button>
