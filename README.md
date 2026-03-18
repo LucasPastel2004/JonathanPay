@@ -63,9 +63,11 @@ NEXTAUTH_SECRET="uma-frase-secreta-qualquer-para-encriptar-sessoes"
 ```
 
 ### 4. Inicializar Tabelas (Primeira vez)
-Se você estiver subindo um novo banco de dados vazio, acesse localmente a rota oculta abaixo no seu navegador para forçar a criação das tabelas `users`, `groups`, `group_members`, e `items`:
+Se você estiver subindo um novo banco de dados vazio, acesse a rota oculta abaixo no seu navegador (seja no `localhost` ou no seu site da Vercel) para forçar a criação das tabelas:
 
-[http://localhost:3000/api/init](http://localhost:3000/api/init)
+(Local) [http://localhost:3000/api/init](http://localhost:3000/api/init)
+
+(Produção) `https://seu-site.vercel.app/api/init`
 
 ### 5. Iniciar o servidor de desenvolvimento
 ```bash

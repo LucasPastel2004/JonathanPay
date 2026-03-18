@@ -71,6 +71,6 @@ export async function GET(request, { params }) {
     return NextResponse.json(responseData);
   } catch (error) {
     console.error("Groups Detail API Error:", error);
-    return NextResponse.json({ error: "Failed to load group detail" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to load group detail" }, { status: 500 });
   }
 }

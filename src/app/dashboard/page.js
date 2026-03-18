@@ -60,6 +60,11 @@ export default function Dashboard() {
     ];
 
     try {
+      // Hard check if the Database has generated the User ID
+      if (!currentUser.id) {
+         throw new Error("Seu perfil não está no Banco de Dados. Acesse a url /api/init para forçar a criação das tabelas e faça login novamente.");
+      }
+
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,7 +75,11 @@ export default function Dashboard() {
         })
       });
 
-      if (!res.ok) throw new Error("Erro ao criar");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erro misterioso no servidor");
+      }
+      
       const newGroup = await res.json();
       
       // Reset Modal & redirect

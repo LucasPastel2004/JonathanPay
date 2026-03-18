@@ -26,7 +26,8 @@ export default function GroupPage({ params }) {
       try {
         const res = await fetch(`/api/groups/${groupId}`);
         if (!res.ok) {
-          alert("Grupo não encontrado ou erro.");
+          const errData = await res.json().catch(()=>({}));
+          alert("Erro no Servidor ao carregar grupo: " + (errData.error || "Grupo não encontrado ou id inválido."));
           router.push("/dashboard");
           return;
         }
