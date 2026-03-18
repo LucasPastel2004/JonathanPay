@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { sql } from "@vercel/postgres";
+import crypto from "crypto";
 
 export const authOptions = {
   providers: [
@@ -17,7 +18,7 @@ export const authOptions = {
         
         if (rows.length === 0) {
           // If not, we insert
-          const newId = "usr_" + Date.now();
+          const newId = "usr_" + crypto.randomUUID();
           await sql`
             INSERT INTO users (id, name, email, pix_key)
             VALUES (${newId}, ${user.name}, ${user.email}, null)
@@ -29,7 +30,7 @@ export const authOptions = {
         return true;
       } catch (error) {
         console.error("NextAuth signIn Error:", error);
-        return true; // allow sign in anyway, they just won't be mapped properly
+        return false; // block sign in if DB is unreachable — user must retry
       }
     },
     async session({ session, token, user }) {
@@ -41,7 +42,9 @@ export const authOptions = {
              session.user.id = rows[0].id; // Give frontend the real ID
              session.user.name = rows[0].name;
            }
-        } catch (err) {}
+        } catch (err) {
+          console.error("NextAuth session callback Error:", err);
+        }
       }
       return session;
     }

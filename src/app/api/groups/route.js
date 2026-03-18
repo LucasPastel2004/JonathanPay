@@ -1,8 +1,16 @@
 import { sql, db as vercelDb } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
+import crypto from 'crypto';
 
 // GET /api/groups?userId=123
 export async function GET(request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('userId');
 
@@ -40,6 +48,11 @@ export async function GET(request) {
 
 // POST /api/groups
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   const client = await vercelDb.connect();
   
   try {
@@ -49,7 +62,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Name and ownerId are required" }, { status: 400 });
     }
 
-    const groupId = "grp_" + Date.now();
+    const groupId = "grp_" + crypto.randomUUID();
 
     await client.sql`BEGIN`;
     
@@ -77,7 +90,7 @@ export async function POST(request) {
         if (existingUserRows.length > 0) {
           targetId = existingUserRows[0].id;
         } else {
-          targetId = "usr_" + Date.now() + Math.floor(Math.random() * 1000);
+          targetId = "usr_" + crypto.randomUUID();
           await client.sql`
             INSERT INTO users (id, name) VALUES (${targetId}, ${pName.trim()})
           `;

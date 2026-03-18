@@ -1,7 +1,15 @@
 import { db } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../../auth/[...nextauth]/route';
+import crypto from 'crypto';
 
 export async function POST(request, { params }) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   const unwrappedParams = await params;
   const groupId = unwrappedParams.id;
   const client = await db.connect();
@@ -13,7 +21,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Invalid item data" }, { status: 400 });
     }
 
-    const itemId = "itm_" + Date.now();
+    const itemId = "itm_" + crypto.randomUUID();
 
     await client.sql`BEGIN`;
     

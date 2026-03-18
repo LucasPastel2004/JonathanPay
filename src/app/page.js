@@ -12,7 +12,8 @@ export default function Home() {
     // If the user's real session is available, redirect them securely
     if (status === "authenticated") {
       const urlParams = new URLSearchParams(window.location.search);
-      const redirect = urlParams.get("redirect") || "/dashboard";
+      const rawRedirect = urlParams.get("redirect");
+      const redirect = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/dashboard";
       router.push(redirect);
     }
   }, [status, router]);
